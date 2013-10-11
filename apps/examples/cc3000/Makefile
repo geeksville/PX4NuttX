@@ -1,7 +1,7 @@
 ############################################################################
-# drivers/Makefile
+# apps/examples/hello/Makefile
 #
-#   Copyright (C) 2007-2012 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2008, 2010-2013 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,70 +33,45 @@
 #
 ############################################################################
 
+-include $(TOPDIR)/.config
 -include $(TOPDIR)/Make.defs
-DELIM ?= $(strip /)
+include $(APPDIR)/Make.defs
 
+# Hello, World! built-in application info
+
+APPNAME		= c3b
+PRIORITY	= SCHED_PRIORITY_DEFAULT
+STACKSIZE	= 4096
+
+# Hello, World! Example
+
+ASRCS		=
+CSRCS		= cc3000basic.c board.c
+
+AOBJS		= $(ASRCS:.S=$(OBJEXT))
+COBJS		= $(CSRCS:.c=$(OBJEXT))
+
+SRCS		= $(ASRCS) $(CSRCS)
+OBJS		= $(AOBJS) $(COBJS)
+
+ifeq ($(CONFIG_WINDOWS_NATIVE),y)
+  BIN		= ..\..\libapps$(LIBEXT)
+else
 ifeq ($(WINTOOL),y)
-INCDIROPT = -w
-endif
-
-DEPPATH = --dep-path .
-ASRCS =
-CSRCS =
-VPATH = .
-
-# Include support for various drivers.  Each Make.defs file will add its
-# files to the source file list, add its DEPPATH info, and will add
-# the appropriate paths to the VPATH variable
-
-include analog$(DELIM)Make.defs
-include audio$(DELIM)Make.defs
-include bch$(DELIM)Make.defs
-include input$(DELIM)Make.defs
-include lcd$(DELIM)Make.defs
-include mmcsd$(DELIM)Make.defs
-include mtd$(DELIM)Make.defs
-include net$(DELIM)Make.defs
-include pipes$(DELIM)Make.defs
-include power$(DELIM)Make.defs
-include sensors$(DELIM)Make.defs
-include sercomm$(DELIM)Make.defs
-include serial$(DELIM)Make.defs
-include syslog$(DELIM)Make.defs
-include usbdev$(DELIM)Make.defs
-include usbhost$(DELIM)Make.defs
-include wireless$(DELIM)Make.defs
-include wireless$(DELIM)cc3000$(DELIM)Make.defs
-
-ifneq ($(CONFIG_NFILE_DESCRIPTORS),0)
-  CSRCS += dev_null.c dev_zero.c loop.c
-
-ifneq ($(CONFIG_DISABLE_MOUNTPOINT),y)
-  CSRCS += ramdisk.c rwbuffer.c
-endif
-
-ifeq ($(CONFIG_CAN),y)
-  CSRCS += can.c
-endif
-
-ifeq ($(CONFIG_PWM),y)
-  CSRCS += pwm.c
-endif
-
-ifeq ($(CONFIG_WATCHDOG),y)
-  CSRCS += watchdog.c
+  BIN		= ..\\..\\libapps$(LIBEXT)
+else
+  BIN		= ../../libapps$(LIBEXT)
 endif
 endif
 
-AOBJS = $(ASRCS:.S=$(OBJEXT))
-COBJS = $(CSRCS:.c=$(OBJEXT))
+ROOTDEPPATH	= --dep-path .
 
-SRCS = $(ASRCS) $(CSRCS)
-OBJS = $(AOBJS) $(COBJS)
+# Common build
 
-BIN = libdrivers$(LIBEXT)
+VPATH		= 
 
-all: $(BIN)
+all: .built
+.PHONY: clean depend distclean
 
 $(AOBJS): %$(OBJEXT): %.S
 	$(call ASSEMBLE, $<, $@)
@@ -104,17 +79,27 @@ $(AOBJS): %$(OBJEXT): %.S
 $(COBJS): %$(OBJEXT): %.c
 	$(call COMPILE, $<, $@)
 
-$(BIN): $(OBJS)
-	$(call ARCHIVE, $@, $(OBJS))
+.built: $(OBJS)
+	$(call ARCHIVE, $(BIN), $(OBJS))
+	@touch .built
+
+ifeq ($(CONFIG_NSH_BUILTIN_APPS),y)
+$(BUILTIN_REGISTRY)$(DELIM)$(APPNAME)_main.bdat: $(DEPCONFIG) Makefile
+	$(call REGISTER,$(APPNAME),$(PRIORITY),$(STACKSIZE),$(APPNAME)_main)
+
+context: $(BUILTIN_REGISTRY)$(DELIM)$(APPNAME)_main.bdat
+else
+context:
+endif
 
 .depend: Makefile $(SRCS)
-	$(Q) $(MKDEP) $(DEPPATH) "$(CC)" -- $(CFLAGS) -- $(SRCS) >Make.dep
-	$(Q) touch $@
+	@$(MKDEP) $(ROOTDEPPATH) "$(CC)" -- $(CFLAGS) -- $(SRCS) >Make.dep
+	@touch $@
 
 depend: .depend
 
 clean:
-	$(call DELFILE, $(BIN))
+	$(call DELFILE, .built)
 	$(call CLEAN)
 
 distclean: clean
