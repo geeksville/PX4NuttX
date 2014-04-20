@@ -2625,7 +2625,7 @@ static void up_onrxdeque(struct uart_dev_s *dev)
   if (priv->iflow && (priv->rts_gpio != 0))
     {
       // We've delivered the chars to the OS FIFO now update RTS state as needed
-      int numUsed = uart_rxavailable(dev);
+      int numUsed = uart_numrxavail(dev);
       // If >3/4 full we tell sender to back off.  Once <1/4 full we tell them they can resume.  Otherwise no change
       bool wantResume = numUsed <= dev->recv.size / 4;
 
